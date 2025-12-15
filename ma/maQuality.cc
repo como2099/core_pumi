@@ -569,6 +569,22 @@ bool isLayerElementOk(Mesh* m, Entity* e)
     return isPyramidOk(m, e);
   if (type == apf::Mesh::PRISM)
     return isPrismOk(m, e);
+  if (type == apf::Mesh::QUAD) {
+    // For 2D boundary layer meshes, check if quad is non-degenerate
+    // A quad is OK if it has positive area (non-inverted)
+    Entity* v[4];
+    m->getDownward(e, 0, v);
+    Vector p[4];
+    for (int i = 0; i < 4; ++i)
+      m->getPoint(v[i], 0, p[i]);
+
+    // Check both triangulation diagonals for positive area
+    Vector d1 = apf::cross(p[1] - p[0], p[2] - p[0]);
+    Vector d2 = apf::cross(p[2] - p[0], p[3] - p[0]);
+
+    // If both triangles have positive area in same direction, quad is OK
+    return (d1[2] > 0 && d2[2] > 0) || (d1[2] < 0 && d2[2] < 0);
+  }
   abort();
   return false;
 }
