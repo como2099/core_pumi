@@ -570,20 +570,30 @@ bool isLayerElementOk(Mesh* m, Entity* e)
   if (type == apf::Mesh::PRISM)
     return isPrismOk(m, e);
   if (type == apf::Mesh::QUAD) {
-    // For 2D boundary layer meshes, check if quad is non-degenerate
-    // A quad is OK if it has positive area (non-inverted)
+    // Check if quad is non-degenerate without assuming a specific embedding.
+    // The quad is considered valid if its two sub-triangles have non-zero area
+    // and consistent orientation.
+
     Entity* v[4];
     m->getDownward(e, 0, v);
     Vector p[4];
     for (int i = 0; i < 4; ++i)
       m->getPoint(v[i], 0, p[i]);
 
-    // Check both triangulation diagonals for positive area
-    Vector d1 = apf::cross(p[1] - p[0], p[2] - p[0]);
-    Vector d2 = apf::cross(p[2] - p[0], p[3] - p[0]);
+    // Form two triangles sharing a diagonal
+    Vector n1 = apf::cross(p[1] - p[0], p[2] - p[0]);
+    Vector n2 = apf::cross(p[2] - p[0], p[3] - p[0]);
 
-    // If both triangles have positive area in same direction, quad is OK
-    return (d1[2] > 0 && d2[2] > 0) || (d1[2] < 0 && d2[2] < 0);
+    double a1 = n1.getLength();
+    double a2 = n2.getLength();
+
+    // Reject degenerate triangles
+    const double eps = 1e-14;
+    if (a1 < eps || a2 < eps)
+      return false;
+
+    // Check consistent orientation (normals point in the same general direction)
+    return (n1 * n2) > eps * a1 * a2;
   }
   abort();
   return false;
